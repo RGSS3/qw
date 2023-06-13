@@ -1,8 +1,7 @@
 require 'yaml'
 require 'zlib'
 class QW
-    attr_accessor :code
-    attr_accessor :stack
+    attr_accessor :dump
     attr_accessor :running    
     REG = {}
     
@@ -11,15 +10,18 @@ class QW
         REG[reg] = {reg: reg, block: block}
     end        
     
-    def initialize(code = [], stack = [])
-        self.code  = code
-        self.stack = stack
+    def initialize(dump)
+        self.dump = dump
         @running   = true
     end
     
     def self.fromScript(name)
         code = File.read(name).split("\n")
-        QW.new(code)
+        QW.new({
+          :code  => code,
+          :stack => [],
+          :heap  => {}, 
+        })
     end 
     
     def toImage(name, d = dump, options = {})
@@ -30,17 +32,13 @@ class QW
         end            
     end        
     
-    def dump
-        {code: self.code, stack: self.stack}
-    end        
     
     def copy
         YAML.load YAML.dump(dump) 
     end        
     
     def load(d)
-        self.code = d[:code]
-        self.stack = d[:stack]
+        self.dump = d
     end        
     
     def self.fromImage(name, options = {})
@@ -49,19 +47,27 @@ class QW
             ff = Zlib::Inflate.inflate(ff)
         end            
         rr = YAML.load ff
-        QW.new(rr[:code], rr[:stack])             
+        QW.new(rr)             
+    end
+    
+    def code
+        self.dump[:code]
+    end
+    
+    def stack
+        self.dump[:stack]
     end
     
     def step
-        if @code.empty?
+        if code.empty?
              @running = false
              return
         end
         
         @prev = prev = copy
-        code = @cur = @code.shift
+        codeline = @cur = code.shift
         REG.each{|k, v|
-            if v[:reg] =~ code
+            if v[:reg] =~ codeline
                 match = $~
                 run_one match, v, prev
                 return
@@ -84,9 +90,12 @@ class QW
        puts "1. To Next Line"
        puts "2. Dump current state"
        puts "3. Retry Prev Line"
+       puts "0. Exit"
        loop do
            r = gets.to_i
            case r
+           when 0
+               exit
            when 1 
                puts "aborted"
                return
@@ -178,9 +187,9 @@ class QW
 end    
 
 
-=begin
+
 qw = QW.fromScript('ttt.txt')
 while qw.running
     qw.step
 end
-=end
+

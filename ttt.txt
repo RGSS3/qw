@@ -1,0 +1,5 @@
+exec: stack.push("+")
+exec: stack.push(1)
+exec: stack.push(2)
+exec: polish
+print

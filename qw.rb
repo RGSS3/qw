@@ -129,6 +129,15 @@ class QW
        self.stack.push "!"
     end
     
+    def polish
+       while self.stack.size >= 3 && ["+", "-", "*", "/", "%"].include?(self.stack[-3]) &&
+              self.stack[-2].is_a?(Integer) &&
+              self.stack[-1].is_a?(Integer)
+          op, s, t = self.stack.pop(3)
+          self.stack.push(s.send(op, t))
+       end
+    end       
+    
     R /^compute-push: (.*)$/ do |m|
        rr = Integer(m[1]) rescue m[1] 
        self.stack.push(rr)
@@ -155,6 +164,14 @@ class QW
     R /^eval: (.*)/ do |m|
         begin
             stack.push(eval(m[1]))
+        rescue
+            exception_handler(@prev)
+        end             
+    end
+    
+    R /^exec: (.*)/ do |m|
+        begin
+            eval(m[1])
         rescue
             exception_handler(@prev)
         end             
